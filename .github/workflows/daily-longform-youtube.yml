@@ -62,6 +62,19 @@ jobs:
       - name: Generate and upload one unique longform video
         run: python longform_automation/daily_longform_upload_v2.py
 
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: longform-review-package
+          path: |
+            output/**/*.mp4
+            output/**/*.mp3
+            output/**/*.srt
+            output/**/frames/*.jpg
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Commit longform topic history
         run: |
           git config user.name "github-actions[bot]"
