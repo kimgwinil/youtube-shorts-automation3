@@ -620,12 +620,10 @@ def render_video(topic, scenes):
     srt.write_text("\n".join(blocks), encoding="utf-8")
 
     silent = OUT / "silent.mp4"
-    bgm = OUT / "bgm.wav"
     mixed = OUT / "mixed.m4a"
     video = OUT / "final.mp4"
     subprocess.run(["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat), "-vf", f"scale={WIDTH}:{HEIGHT},format=yuv420p", "-r", str(FPS), "-c:v", "libx264", "-crf", "19", str(silent)], check=True)
-    subprocess.run(["ffmpeg", "-y", "-f", "lavfi", "-i", f"sine=frequency=82:sample_rate=48000:duration={total + 1}", "-filter_complex", "volume=0.010", str(bgm)], check=True)
-    subprocess.run(["ffmpeg", "-y", "-i", str(wav_audio), "-i", str(bgm), "-filter_complex", "[0:a]volume=2.5[a0];[1:a]volume=0.08[a1];[a0][a1]amix=inputs=2:duration=first:normalize=0", "-c:a", "aac", "-b:a", "192k", str(mixed)], check=True)
+    subprocess.run(["ffmpeg", "-y", "-i", str(wav_audio), "-filter_complex", "[0:a]volume=2.5[a0]", "-map", "0:v?", "-map", "[a0]", "-c:a", "aac", "-b:a", "192k", str(mixed)], check=True)
     subprocess.run(["ffmpeg", "-y", "-i", str(silent), "-i", str(mixed), "-map", "0:v:0", "-map", "1:a:0", "-c:v", "copy", "-c:a", "aac", "-shortest", str(video)], check=True)
     return video, srt
 
@@ -668,8 +666,8 @@ def main():
     scenes = build_scenes(topic)
     video, srt = render_video(topic, scenes)
     video_duration = duration(video)
-    if not 180 <= video_duration <= 360:
-        raise RuntimeError(f"Generated video duration is outside 3-6 minutes: {video_duration:.1f}s")
+    if not 180 <= video_duration <= 480:
+        raise RuntimeError(f"Generated video duration is outside 3-8 minutes: {video_duration:.1f}s")
     video_id = upload(topic, video, srt)
     history.append({
         "topic": topic["topic"],
