@@ -7,11 +7,30 @@ import daily_longform_upload as base
 _generate_gemini = base.generate_gemini
 _generate_openai = base.generate_openai
 
+_CATEGORY_INSTRUCTIONS = {
+    "life": (
+        "Choose a practical Korean everyday-life information topic such as household management, "
+        "consumer decisions, education, work habits, public services, digital life, money habits, "
+        "relationships, safety, or sustainable living. Do not choose medical diagnosis or treatment."
+    ),
+    "medical": (
+        "Choose a Korean medical common-sense education topic for the general public. Keep it preventive, "
+        "practical, and non-diagnostic. Do not provide personalized diagnosis, treatment plans, drug dosages, "
+        "emergency instructions beyond advising professional care, or claims that replace a clinician."
+    ),
+    "medical_common_sense": (
+        "Choose a Korean medical common-sense education topic for the general public. Keep it preventive, "
+        "practical, and non-diagnostic. Do not provide personalized diagnosis, treatment plans, drug dosages, "
+        "emergency instructions beyond advising professional care, or claims that replace a clinician."
+    ),
+}
+
 _TOPIC_PROMPT_USER = (
     "Create one fresh Korean YouTube longform explainer topic as strict JSON. "
     "Avoid every used topic. The tone should be informative, practical, and suitable for a Korean audience. "
+    "{category_instruction} "
     "Choose a concrete everyday problem that can be shown visually in realistic slides. "
-    "Do not choose broad abstract topics, vague culture commentary, politics, disasters, celebrities, or medical diagnosis. "
+    "Do not choose broad abstract topics, vague culture commentary, politics, disasters, or celebrities. "
     "The topic must naturally support 17 different visual scenes with Korean people, places, objects, or actions. "
     "Fields required: id, topic, title, description, tags, subject, problem, solution, example. "
     "description must include two short paragraphs and 5 Korean hashtags. "
@@ -57,6 +76,7 @@ def _parse_and_validate_topic(raw, used_topics):
 
 
 def _generate_topic_openai(used_topics):
+    category_instruction = _CATEGORY_INSTRUCTIONS.get(base.TOPIC_CATEGORY, _CATEGORY_INSTRUCTIONS["life"])
     client = base.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     response = client.chat.completions.create(
         model=os.getenv("OPENAI_TEXT_MODEL", "gpt-4o-mini"),
@@ -68,6 +88,7 @@ def _generate_topic_openai(used_topics):
             {
                 "role": "user",
                 "content": _TOPIC_PROMPT_USER.format(
+                    category_instruction=category_instruction,
                     used_topics=json.dumps(used_topics, ensure_ascii=False)
                 ),
             },
@@ -83,9 +104,11 @@ def _generate_topic_gemini(used_topics):
     client = genai.Client(
         api_key=os.environ.get("GEMINI_API_KEY") or os.environ["GOOGLE_API_KEY"]
     )
+    category_instruction = _CATEGORY_INSTRUCTIONS.get(base.TOPIC_CATEGORY, _CATEGORY_INSTRUCTIONS["life"])
     prompt = (
         "You return only valid JSON. Do not include markdown fences or commentary.\n\n"
         + _TOPIC_PROMPT_USER.format(
+            category_instruction=category_instruction,
             used_topics=json.dumps(used_topics, ensure_ascii=False)
         )
     )

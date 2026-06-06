@@ -20,7 +20,9 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 ROOT = Path.cwd()
-HISTORY = Path(__file__).with_name("topic-history.json")
+TOPIC_CATEGORY = os.getenv("LONGFORM_TOPIC_CATEGORY", "life").strip().lower()
+DEFAULT_HISTORY_NAME = f"topic-history-{TOPIC_CATEGORY}.json"
+HISTORY = Path(os.getenv("LONGFORM_HISTORY_FILE", Path(__file__).with_name(DEFAULT_HISTORY_NAME)))
 OUT = ROOT / "output" / datetime.now().strftime("%Y%m%d")
 WIDTH, HEIGHT, FPS = 1920, 1080, 30
 SCENE_IMAGE_MAX_WORKERS = max(1, min(4, int(os.getenv("SCENE_IMAGE_MAX_WORKERS", "2"))))
@@ -39,7 +41,7 @@ HEYGEN_ASPECT_RATIO = os.getenv("HEYGEN_ASPECT_RATIO", "16:9")
 HEYGEN_POLL_INTERVAL = int(os.getenv("HEYGEN_POLL_INTERVAL", "10"))
 HEYGEN_POLL_TIMEOUT = int(os.getenv("HEYGEN_POLL_TIMEOUT", "900"))
 
-TOPICS = [
+LIFE_TOPICS = [
     {
         "id": "study-score-plateau",
         "topic": "교육: 공부를 오래 해도 성적이 안 오르는 이유",
@@ -85,6 +87,60 @@ TOPICS = [
         "example": "잠은 오래 잤지만 아침마다 개운하지 않은 직장인",
     },
 ]
+
+MEDICAL_COMMON_SENSE_TOPICS = [
+    {
+        "id": "blood-pressure-basics",
+        "topic": "의학상식: 혈압 수치를 볼 때 꼭 알아야 할 기본",
+        "title": "혈압 수치, 숫자만 보면 놓치는 것들",
+        "description": "혈압은 한 번의 숫자보다 반복 측정과 생활 습관 맥락이 중요합니다.\n\n가정혈압 측정법, 기록 습관, 병원 상담이 필요한 신호를 알기 쉽게 설명합니다.\n\n#혈압 #의학상식 #건강관리 #생활습관 #건강정보",
+        "tags": ["혈압", "의학상식", "건강관리", "생활습관", "건강정보"],
+        "subject": "Korean adult checking blood pressure at home with a digital monitor, realistic documentary style",
+        "problem": "혈압을 한 번만 재고 정상 또는 위험으로 단정하기 쉬움",
+        "solution": "올바른 자세로 반복 측정하고 기록을 바탕으로 전문가와 상담하는 것",
+        "example": "집에서 잰 혈압과 병원에서 잰 혈압이 달라 혼란스러운 직장인",
+    },
+    {
+        "id": "medication-label-basics",
+        "topic": "의학상식: 약 봉투와 설명서에서 먼저 봐야 할 것",
+        "title": "약 설명서, 이것부터 확인하세요",
+        "description": "약은 이름보다 복용 방법, 주의사항, 중복 성분 확인이 더 중요할 때가 많습니다.\n\n약 봉투와 설명서를 읽는 기본 순서를 생활 속 예시로 정리합니다.\n\n#약복용 #의학상식 #복약지도 #건강정보 #약설명서",
+        "tags": ["약복용", "의학상식", "복약지도", "건강정보", "약설명서"],
+        "subject": "Korean patient reading medication instructions at a pharmacy counter, realistic documentary style",
+        "problem": "약 이름만 보고 복용 시간과 주의사항을 놓칠 수 있음",
+        "solution": "복용 횟수, 식전 식후, 중복 성분, 이상 반응 안내를 먼저 확인하는 것",
+        "example": "감기약과 진통제를 함께 먹어도 되는지 몰라 약국에서 상담하는 사람",
+    },
+    {
+        "id": "blood-sugar-signals",
+        "topic": "의학상식: 혈당 관리에서 놓치기 쉬운 생활 신호",
+        "title": "혈당 관리, 생활 신호부터 보세요",
+        "description": "혈당은 식사, 수면, 활동량, 스트레스의 영향을 함께 받습니다.\n\n일상에서 관찰할 수 있는 변화와 검진 결과를 해석할 때의 기본 원칙을 설명합니다.\n\n#혈당 #의학상식 #건강검진 #생활습관 #건강정보",
+        "tags": ["혈당", "의학상식", "건강검진", "생활습관", "건강정보"],
+        "subject": "Korean adult reviewing a health checkup report at a kitchen table, realistic documentary style",
+        "problem": "검진 수치 하나만 보고 생활 패턴의 영향을 놓치기 쉬움",
+        "solution": "식사, 활동, 수면 기록과 검진 결과를 함께 보고 전문가 상담을 받는 것",
+        "example": "야근과 간식이 늘어난 뒤 건강검진 혈당 수치가 올라 걱정하는 사람",
+    },
+    {
+        "id": "dehydration-basics",
+        "topic": "의학상식: 탈수를 가볍게 보면 안 되는 이유",
+        "title": "탈수, 목마름만의 문제가 아닙니다",
+        "description": "탈수는 갈증뿐 아니라 피로감, 어지러움, 소변 색 변화로도 나타날 수 있습니다.\n\n더운 날, 운동 후, 고령자에게 특히 중요한 수분 관리 기본을 정리합니다.\n\n#탈수 #의학상식 #수분관리 #건강정보 #생활건강",
+        "tags": ["탈수", "의학상식", "수분관리", "건강정보", "생활건강"],
+        "subject": "Korean older adult drinking water after a walk in warm weather, realistic documentary style",
+        "problem": "갈증이 심하지 않으면 탈수 가능성을 놓칠 수 있음",
+        "solution": "활동량과 날씨에 맞춰 수분을 보충하고 위험 신호가 있으면 진료를 받는 것",
+        "example": "더운 날 산책 후 어지러움을 느껴 휴식과 수분 보충이 필요한 어르신",
+    },
+]
+
+TOPICS_BY_CATEGORY = {
+    "life": LIFE_TOPICS,
+    "medical": MEDICAL_COMMON_SENSE_TOPICS,
+    "medical_common_sense": MEDICAL_COMMON_SENSE_TOPICS,
+}
+TOPICS = TOPICS_BY_CATEGORY.get(TOPIC_CATEGORY, LIFE_TOPICS)
 
 LAYOUT_TITLES = [
     "오늘의 질문",
@@ -1376,6 +1432,7 @@ def main():
         raise RuntimeError(f"Generated video duration is outside 3-8 minutes: {video_duration:.1f}s")
     video_id = upload(topic, video, srt)
     history.append({
+        "category": TOPIC_CATEGORY,
         "topic": topic["topic"],
         "title": topic["title"],
         "created_at": datetime.now().isoformat(timespec="seconds"),
