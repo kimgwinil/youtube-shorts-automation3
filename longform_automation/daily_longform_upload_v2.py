@@ -75,7 +75,7 @@ def _parse_and_validate_topic(raw, used_topics):
     return topic
 
 
-def _generate_topic_openai(used_topics):
+def _generate_topic_openai(used_topics, temperature=0.85):
     category_instruction = _CATEGORY_INSTRUCTIONS.get(base.TOPIC_CATEGORY, _CATEGORY_INSTRUCTIONS["life"])
     client = base.OpenAI(api_key=os.environ["OPENAI_API_KEY"])
     response = client.chat.completions.create(
@@ -93,13 +93,14 @@ def _generate_topic_openai(used_topics):
                 ),
             },
         ],
-        temperature=0.85,
+        temperature=min(temperature, 1.0),
     )
     return _parse_and_validate_topic(response.choices[0].message.content, used_topics)
 
 
-def _generate_topic_gemini(used_topics):
+def _generate_topic_gemini(used_topics, temperature=0.85):
     from google import genai
+    from google.genai import types as genai_types
 
     client = genai.Client(
         api_key=os.environ.get("GEMINI_API_KEY") or os.environ["GOOGLE_API_KEY"]
@@ -115,17 +116,34 @@ def _generate_topic_gemini(used_topics):
     response = client.models.generate_content(
         model=os.getenv("GEMINI_TEXT_MODEL", "gemini-2.5-flash"),
         contents=prompt,
+        config=genai_types.GenerateContentConfig(temperature=min(temperature, 1.0)),
     )
     return _parse_and_validate_topic(response.text, used_topics)
 
 
+_MAX_TOPIC_RETRIES = 5
+_BASE_TEMPERATURE = 0.85
+_TEMPERATURE_STEP = 0.05
+
+
 def generate_topic(history):
     used_topics = [x.get("topic", "") for x in history if x.get("topic")]
-    try:
-        return _generate_topic_openai(used_topics)
-    except Exception as exc:
-        print(f"OpenAI topic generation failed; falling back to Gemini: {exc}")
-        return _generate_topic_gemini(used_topics)
+    last_exc = None
+    for attempt in range(_MAX_TOPIC_RETRIES):
+        temperature = _BASE_TEMPERATURE + attempt * _TEMPERATURE_STEP
+        try:
+            return _generate_topic_openai(used_topics, temperature=temperature)
+        except Exception as exc:
+            last_exc = exc
+            print(f"OpenAI topic generation attempt {attempt + 1} failed (temp={temperature:.2f}): {exc}")
+        try:
+            return _generate_topic_gemini(used_topics, temperature=temperature)
+        except Exception as exc:
+            last_exc = exc
+            print(f"Gemini topic generation attempt {attempt + 1} failed (temp={temperature:.2f}): {exc}")
+    raise RuntimeError(
+        f"Failed to generate a unique topic after {_MAX_TOPIC_RETRIES} attempts"
+    ) from last_exc
 
 
 def pick_topic(history):
